@@ -27,16 +27,17 @@ def extrair_dados_clubs():
         for script in scripts:
             src = script['src']
             if '_next/static/chunks' in src:
-                js_url = url + src.lstrip('/')
+                # CORREÇÃO: Garante a barra correta entre o domínio e o caminho do arquivo _next
+                js_url = url.rstrip('/') + '/' + src.lstrip('/')
                 js_res = requests.get(js_url, headers=headers, timeout=5)
                 
                 if "archetypes" in js_res.text or "playstyles" in js_res.text:
                     # Captura estruturas em formato de dicionário contendo os dados meta
                     dados_localizados = re.findall(r'(\{.*?\}\}\})', js_res.text)
                     if dados_localizados:
-                        return json.loads(dados_localizados[0])
+                        return json.loads(dados_localizados)
                         
-        # Fallback estruturado caso o empacotamento mude temporariamente
+        # Fallback estruturado caso o empacotamento mude ou precise de valores padrão
         return {
             "Atualizado": "Sim",
             "Arquétipos": {
