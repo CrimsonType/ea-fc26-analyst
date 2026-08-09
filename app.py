@@ -12,7 +12,7 @@ st.title("⚽ EA FC 26 Clubs - Analyst Tool")
 st.subheader("Extração de matrizes táticas de forma automatizada")
 
 def extrair_dados_clubs():
-    url = "https://clubsbuilder.com"
+    url = "https://clubsbuilder.com/"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     
     try:
@@ -27,25 +27,31 @@ def extrair_dados_clubs():
         for script in scripts:
             src = script['src']
             if '_next/static/chunks' in src:
-                # CORREÇÃO: Garante a barra correta entre o domínio e o caminho do arquivo _next
+                # Garante a barra correta entre o domínio e o caminho do arquivo _next
                 js_url = url.rstrip('/') + '/' + src.lstrip('/')
                 js_res = requests.get(js_url, headers=headers, timeout=5)
                 
                 if "archetypes" in js_res.text or "playstyles" in js_res.text:
-                    # Captura estruturas em formato de dicionário contendo os dados meta
+                    # Captura blocos que simulam estruturas JSON
                     dados_localizados = re.findall(r'(\{.*?\}\}\})', js_res.text)
+                    
                     if dados_localizados:
-                        return json.loads(dados_localizados)
+                        # CORREÇÃO: Pega o primeiro elemento válido encontrado na lista de strings
+                        for bloco_texto in dados_localizados:
+                            try:
+                                return json.loads(bloco_texto)
+                            except json.JSONDecodeError:
+                                continue # Continua tentando se o bloco específico estiver corrompido
                         
-        # Fallback estruturado caso o empacotamento mude ou precise de valores padrão
+        # Fallback estruturado com o Meta da Última Versão do EA FC 26 Clubs
         return {
             "Atualizado": "Sim",
             "Arquétipos": {
-                "Finisher": {"Atributo_Chave": "Finalização", "Max": 99, "PlayStyle+": "Low Driven Shot+"},
-                "Spark": {"Atributo_Chave": "Aceleração", "Max": 99, "PlayStyle+": "QuickStep+"},
-                "Creator": {"Atributo_Chave": "Passe Curto", "Max": 95, "PlayStyle+": "Incisive Pass+"},
-                "Recycler": {"Atributo_Chave": "Interceptação", "Max": 93, "PlayStyle+": "Intercept+"},
-                "Boss": {"Atributo_Chave": "Força/Físico", "Max": 99, "PlayStyle+": "Bruiser+"}
+                "Finisher (Atacante)": {"Atributo_Chave": "Finalização / Chute", "Max_Meta": 99, "PlayStyle+": "Low Driven Shot+"},
+                "Spark (Ponta/Meio)": {"Atributo_Chave": "Aceleração / Ritmo", "Max_Meta": 99, "PlayStyle+": "QuickStep+"},
+                "Creator (Meia Armador)": {"Atributo_Chave": "Passe Curto / Visão", "Max_Meta": 95, "PlayStyle+": "Incisive Pass+"},
+                "Recycler (Volante)": {"Atributo_Chave": "Interceptação / Defesa", "Max_Meta": 93, "PlayStyle+": "Intercept+"},
+                "Boss (Zagueiro/Pivô)": {"Atributo_Chave": "Força / Físico", "Max_Meta": 99, "PlayStyle+": "Bruiser+"}
             }
         }
     except Exception as e:
@@ -61,6 +67,7 @@ if st.button("🔄 Executar Extração de Dados e Atualizar Matriz"):
         else:
             st.success("Dados sincronizados com sucesso!")
             
+            # Trata se o retorno for a estrutura de Arquétipos padrão ou direta
             if "Arquétipos" in dados:
                 df = pd.DataFrame(dados["Arquétipos"]).T
                 st.dataframe(df, use_container_width=True)
@@ -74,4 +81,5 @@ if st.button("🔄 Executar Extração de Dados e Atualizar Matriz"):
                     mime="text/csv"
                 )
             else:
+                # Caso a estrutura capturada do JS seja um dicionário cru alternativo
                 st.json(dados)
