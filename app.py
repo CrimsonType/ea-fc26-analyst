@@ -58,7 +58,7 @@ if prompt := st.chat_input("Ex: Build ST Meta, 1.80m, 74kg, Nível 50..."):
         with st.spinner("Calculando build e consultando o META..."):
             try:
                 response = client.models.generate_content(
-                    model='gemini-2.0-flash',
+                    model='gemini-2.5-flash',
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_INSTRUCTION,
