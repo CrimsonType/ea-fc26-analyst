@@ -1,2 +1,6 @@
 streamlit
 google-genai
+streamlit
+requests
+beautifulsoup4
+pandas
