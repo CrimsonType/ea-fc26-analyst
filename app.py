@@ -1,65 +1,73 @@
 import os
 import streamlit as st
+from PIL import Image
 from google import genai
 from google.genai import types
-# Configuração da página do Streamlit
-st.set_page_config(
-    page_title="EA FC 26 Meta Analyst",
-    page_icon="⚽",
-    layout="wide"
-)
+
+# Configuração da página
+st.set_page_config(page_title="EA FC 26 Meta Analyst", page_icon="⚽", layout="wide")
+
 st.title("⚽ EA FC 26 Meta Analyst")
-st.caption("Especialista em builds de Pro Clubs (base ClubsBuilder) e Táticas FC IQ.")
-# Recupera a chave de API das variáveis de ambiente ou dos Streamlit Secrets
+st.caption("Agente Autônomo: Análise de META, Builds e Táticas (Multimodal).")
+
+# Recupera a chave de API
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 if not api_key:
-    st.error("⚠️ GEMINI_API_KEY não encontrada. Configure sua chave nos Secrets do Streamlit.")
+    st.error("⚠️ GEMINI_API_KEY não encontrada. Configure nos Secrets do Streamlit.")
     st.stop()
-# Inicializa o cliente oficial do Gemini
+
+# Inicializa o cliente
 client = genai.Client(api_key=api_key)
-# Instruções do Sistema (Comportamento Rigoroso e Analítico)
+
+# Sidebar para upload de imagem
+with st.sidebar:
+    st.header("Análise de Imagem")
+    uploaded_file = st.file_uploader("Suba um print (Build/Status)...", type=["jpg", "jpeg", "png"])
+    if uploaded_file:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Print para análise", use_container_width=True)
+
+# System Instruction: Autonomia Total
 SYSTEM_INSTRUCTION = """
-Você é o "FC 26 Meta Analyst", especialista supremo em builds de Pro Clubs e táticas de EA FC 26.
-REGRAS DE OURO PARA BUILDS (ESTILO CLUBSBUILDER):
-1. CÁLCULO EXATO: Você deve tratar cada build como um problema matemático.
-   - Sempre peça ao usuário o NÍVEL do jogador (pois determina o total de pontos disponíveis).
-   - Se o usuário não informar o nível, assuma o nível 30 como base, mas avise-o.
-2. LIMITES E CAPS: Utilize o Google Search para verificar os "caps" (limites máximos) de atributos para a altura/peso/posição especificada. Não invente valores que ultrapassem o limite real do jogo.
-3. OUTPUT ESTRUTURADO: A resposta DEVE seguir esta tabela obrigatoriamente:
+Você é o "FC 26 Meta Analyst", um agente autônomo de pesquisa e especialista supremo em EA FC 26.
 
-| Categoria | Atributo | Valor Final | Pontos Gastos (Estimativa) |
-| :--- | :--- | :--- | :--- |
-
-   - Inclua também o somatório total de Skill Points usados para verificar se cabe no nível do usuário.
-4. PLAYSTYLES: Priorize PlayStyles baseados no meta atual do FC 26.
-5. BUSCA OBRIGATÓRIA: Se você não tiver certeza do "cap" de um atributo para uma altura específica, use a ferramenta de busca antes de responder.
-6. ESTRUTURA DE RESPOSTA PARA TÁTICAS:
-   - Formação Recomendada
-   - Estilo de Construção e Abordagem Defensiva
-   - Roles/Role++ posição por posição
-   - PlayStyles indispensáveis
-   - Dicas práticas de gameplay
-7. PROIBIDO ALUCINAR: Use o Google Search para verificar informações atualizadas.
+SUA MISSÃO E AUTONOMIA:
+1. NÃO PERGUNTE, RESOLVA: O usuário espera uma resposta pronta. Não perca tempo pedindo dados (nível, altura, peso). Assuma automaticamente os padrões "Meta Competitivos" atuais (ex: Nível Máximo, Altura 1.83m/74kg para atacantes ou o padrão mais eficiente para a posição).
+2. PESQUISA PROATIVA: Antes de responder, SEMPRE utilize a ferramenta de busca (Google Search) para verificar o consenso atual da comunidade competitiva (pro-players) e sites como ClubsBuilder/FUTBIN sobre o assunto.
+3. CONSENSO META: Se houver divergência, apresente a build/tática que é estatisticamente mais utilizada pelos pro-players ou que possui maior taxa de sucesso no patch atual.
+4. ESTRUTURA AUTOMÁTICA: Apresente sempre:
+   - Resumo da build/tática (assumindo o perfil Meta).
+   - Tabela de distribuição de pontos (Baseada no nível máximo disponível).
+   - Justificativa do porquê esse é o META atual (baseado em search).
+5. ANÁLISE DE IMAGENS: Se o usuário enviar um print, sua tarefa é identificar os atributos, converter para a lógica do ClubsBuilder e sugerir correções imediatas para atingir o META.
+6. PROIBIDO ALUCINAR: Use o Google Search para verificar informações atualizadas.
 """
-# Inicializa o histórico de conversas no Streamlit
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
-# Exibe histórico de mensagens
+
+# Exibe o histórico
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+
 # Entrada do usuário
-if prompt := st.chat_input("Ex: Build ST Meta, 1.80m, 74kg, Nível 50..."):
+if prompt := st.chat_input("Ex: Qual a build Meta para Atacante? / Analise este print..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-    # Chamada para a API do Gemini
+
     with st.chat_message("assistant"):
-        with st.spinner("Calculando build e consultando o META..."):
+        with st.spinner("Pesquisando o META atual e calculando..."):
             try:
+                # Prepara o conteúdo (texto + imagem, se houver)
+                contents = [prompt]
+                if uploaded_file:
+                    contents.append(image)
+
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',
-                    contents=prompt,
+                    contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_INSTRUCTION,
                         tools=[types.Tool(google_search=types.GoogleSearch())],
@@ -69,4 +77,4 @@ if prompt := st.chat_input("Ex: Build ST Meta, 1.80m, 74kg, Nível 50..."):
                 st.markdown(response.text)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             except Exception as e:
-                st.error(f"Erro ao consultar a IA: {e}")
+                st.error(f"Erro ao processar (Modelo 2.5): {e}")
