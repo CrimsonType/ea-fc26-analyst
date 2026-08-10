@@ -5,19 +5,7 @@ import sys
 import pandas as pd
 
 st.set_page_config(page_title="EA FC 26 Analyst - Testes", layout="wide")
-
 st.title("⚽ EA FC 26 - Pro Clubs Analyst Tool (Painel de Testes)")
-
-# Configuração de ambiente para rodar o Playwright no Streamlit Cloud
-@st.cache_resource
-def setup_playwright():
-    try:
-        # Garante a instalação do navegador no contêiner da nuvem
-        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
-    except Exception as e:
-        st.error(f"Erro ao inicializar navegadores: {e}")
-
-setup_playwright()
 
 # Sidebar de Administração
 st.sidebar.header("⚙️ Painel de Testes / ETL")
@@ -26,16 +14,14 @@ st.sidebar.header("⚙️ Painel de Testes / ETL")
 if st.sidebar.button("🚀 Executar Raspagem em Tempo Real"):
     log_container = st.expander("📄 Logs de Execução do Robô", expanded=True)
     
-    with st.spinner("Abrindo navegador e conectando ao ClubsBuilder..."):
+    with st.spinner("Conectando ao ClubsBuilder e coletando dados..."):
         try:
-            # Roda o script de extração e captura os logs de saída
             processo = subprocess.run(
                 [sys.executable, "extract_clubsbuilder.py"],
                 capture_output=True,
                 text=True
             )
             
-            # Exibe os logs na tela em tempo real
             if processo.stdout:
                 log_container.text("LOGS DE SAÍDA:\n" + processo.stdout)
             if processo.stderr:
@@ -52,9 +38,8 @@ if st.sidebar.button("🚀 Executar Raspagem em Tempo Real"):
 
 st.divider()
 
-# Exibição dos dados capturados
+# Exibição dos dados
 st.subheader("📊 Visualização dos Dados Carregados")
-
 if os.path.exists("data/attributes_lvl1.csv"):
     df_test = pd.read_csv("data/attributes_lvl1.csv")
     st.dataframe(df_test, use_container_width=True)
